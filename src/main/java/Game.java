@@ -39,24 +39,50 @@ public class Game {
 	}
 
 	private synchronized Listener getAnotherListener(User me) {
-		if (this.user1.equals(me)) {
-			if (!this.user2.equals(me)) {
-				return this.l2;
-			}
-		} else if (this.user2.equals(me)) {
-			if (!this.user1.equals(me)) {
-				return this.l1;
+		if(this.user1!=null && this.user2!=null) {
+				if (!this.user2.equals(me)) {
+					return this.l2;
+				}
+				if (!this.user1.equals(me)) {
+					return this.l1;
+				}
+		}
+		if(this.user1!=null && this.user2==null) {
+			if(this.user1.equals(me)) {
+				return null;
 			}
 		}
+		if(this.user2!=null && this.user1==null) {
+			if(this.user2.equals(me)) {
+				return null;
+			}
+		}
+		
 		return null;
 	}
 
+	public synchronized void messageOpponentAfterQuit(User me, String message) {
+
+		try {
+			Listener l = getAnotherListener(me);
+			if(l==null) {
+				return;
+			}
+			removeUser(me);
+			l.output.write(message);
+			l.output.flush();
+			l = null;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	public synchronized void messageOpponent(User me, String message) {
+
 		try {
 			Listener l = getAnotherListener(me);
 			l.output.write(message);
 			l.output.flush();
-			System.out.println("sent update");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -74,7 +100,7 @@ public class Game {
 	}
 
 	public synchronized boolean isJoinable() {
-		if (this.user1 != null || this.user2 != null) {
+		if (this.user1 == null || this.user2 == null) {
 			return true;
 		}
 		return false;

@@ -63,7 +63,6 @@ public class Listener extends Thread {
 				String command = input.readLine();
 				if (command.contains("joingame:")) {
 					String gameName = command.substring(9);
-					System.out.println("joindgame: " + gameName);
 					boolean joined = false;
 					for (Listener l : Server.listeners) {
 						if(l.game == null) {
@@ -77,8 +76,6 @@ public class Listener extends Thread {
 								l.game.addUser(this.user, this);
 								joined = true;
 								this.game = l.game;
-								System.out.println(this.game.l1==null?"l1 is null":"l1 is not null");
-								System.out.println(this.game.l2==null?"l2 is null":"l2 is not null");
 								this.game.messageOpponent(this.user, "updateplayers\n");
 							}
 						}
@@ -99,22 +96,14 @@ public class Listener extends Thread {
 					}
 					if(!gameExists) {
 						this.game = new Game(this.user, this, gameName);
-						//System.out.println("createdgame: " + this.game.name);
 					}
 					output.write(!gameExists?"ok\n":"error\n");
 					output.flush();
-				} else if (command.contains("leavegame:")) {
-					String gameName = command.substring(10);
-					System.out.println("leftgame: " + gameName);
-					output.write("leftgame: " + gameName + "\n");
-					output.flush();
-					for(Listener l : Server.listeners) {
-						if(l.game.name.strip().equals(gameName.strip())) {
-							this.game.removeUser(this.user);
-						}
-					}
+				} else if (command.contains("leavegame")) {
 					output.write("ok\n");
 					output.flush();
+					this.game.messageOpponentAfterQuit(this.user, "updateplayers\n");
+					this.game = null;
 				}
 				// like setship:1,1;3,3
 				else if (command.contains("setship:")) {
@@ -125,7 +114,6 @@ public class Listener extends Thread {
 					int y1 = Integer.parseInt(startcoord.split(",")[1]);
 					int x2 = Integer.parseInt(endcoord.split(",")[0]);
 					int y2 = Integer.parseInt(endcoord.split(",")[1]);
-					System.out.println("setship:{" + x1 + ";" + y1 + "};{" + x2 + ";" + y2 + "}");
 					output.write("setship:{" + x1 + ";" + y1 + "};{" + x2 + ";" + y2 + "}\n");
 					output.flush();
 					// TODO set a ship on these coordinates
@@ -135,21 +123,24 @@ public class Listener extends Thread {
 					String coord = command.substring(6);
 					int x = Integer.parseInt(coord.split(",")[0]);
 					int y = Integer.parseInt(coord.split(",")[1]);
-					System.out.println("shotat: {" + x + "," + y + "}");
 					output.write("shotat: {" + x + "," + y + "}\n");
 					output.flush();
 					// TODO answer with sector status: NO, HIT, DEAD
 				} else if (command.contains("disconnect")) {
-					output.write("disconnected\n");
-					output.flush();
-					disconnect();
+					if(this.game==null) {
+						continue;
+					}
+					if(this.game!=null) {
+						this.game.messageOpponentAfterQuit(this.user, "updateplayers\n");
+					}
+					socket.close();
 				} else if (command.contains("getgames")) {
 					String str = "";
 					for (Listener l : Server.listeners) {
 						if(l.game == null) {
 							continue;
 						}
-						if (l.game != null) {
+						if (l.game != null && l.game.isJoinable()) {
 							str += l.game.name + ",";
 						}
 					}
@@ -178,9 +169,9 @@ public class Listener extends Thread {
 					
 				}else if(command.contains("getplayers")) {//reponse as user1;user2
 					String response = "players:";
-					response+=this.game.user1==null?"":this.game.user1.name;
+					response+=this.game.user1==null?" ":this.game.user1.name;
 					response+=";";
-					response+=this.game.user2==null?"":this.game.user2.name;
+					response+=this.game.user2==null?" ":this.game.user2.name;
 					output.write(response+"\n");
 					output.flush();
 				}
