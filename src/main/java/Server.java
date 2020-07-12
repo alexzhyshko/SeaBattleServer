@@ -9,7 +9,7 @@ public class Server {
 	static List<Listener> listeners = new ArrayList<>();
 
 	public static void main(String[] args) throws IOException {
-		server = new ServerSocket(9000);
+		server = new ServerSocket(4567);
 		while (true) {
 			User u = new User(server.accept());
 			listeners.add(new Listener(u));
