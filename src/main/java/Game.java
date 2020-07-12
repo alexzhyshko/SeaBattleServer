@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.util.Random;
 
 public class Game {
 
@@ -6,6 +7,10 @@ public class Game {
 	public String name;
 	public User user1;
 	public User user2;
+
+	public User first;
+
+	public User turn;
 
 	public Listener l1;
 	public Listener l2;
@@ -16,6 +21,17 @@ public class Game {
 		this.user1 = u1;
 		this.user2 = u2;
 		this.board = new Board();
+		setTurn();
+	}
+
+	private void setTurn() {
+		int rand = new Random().nextInt(10);
+		if (rand < 5) {
+			first = user1;
+		} else {
+			first = user2;
+		}
+		turn = first;
 	}
 
 	public Game(User u, Listener l, String name) {
@@ -39,25 +55,25 @@ public class Game {
 	}
 
 	private synchronized Listener getAnotherListener(User me) {
-		if(this.user1!=null && this.user2!=null) {
-				if (!this.user2.equals(me)) {
-					return this.l2;
-				}
-				if (!this.user1.equals(me)) {
-					return this.l1;
-				}
+		if (this.user1 != null && this.user2 != null) {
+			if (!this.user2.equals(me)) {
+				return this.l2;
+			}
+			if (!this.user1.equals(me)) {
+				return this.l1;
+			}
 		}
-		if(this.user1!=null && this.user2==null) {
-			if(this.user1.equals(me)) {
+		if (this.user1 != null && this.user2 == null) {
+			if (this.user1.equals(me)) {
 				return null;
 			}
 		}
-		if(this.user2!=null && this.user1==null) {
-			if(this.user2.equals(me)) {
+		if (this.user2 != null && this.user1 == null) {
+			if (this.user2.equals(me)) {
 				return null;
 			}
 		}
-		
+
 		return null;
 	}
 
@@ -65,7 +81,7 @@ public class Game {
 
 		try {
 			Listener l = getAnotherListener(me);
-			if(l==null) {
+			if (l == null) {
 				return;
 			}
 			removeUser(me);
@@ -96,7 +112,7 @@ public class Game {
 			this.user2 = u;
 			this.l2 = l;
 		}
-
+		setTurn();
 	}
 
 	public synchronized boolean isJoinable() {
@@ -122,4 +138,46 @@ public class Game {
 
 		}
 	}
+
+	public synchronized String set(int x, int y, User user) {
+		if(turn == null) {
+			return null;
+		}
+		if (user == turn) {
+			turn = getAnotherUser(user);
+			if (user == first) {
+				return this.board.set(x, y, "X") ? "cross" : null;
+			} else {
+				return this.board.set(x, y, "O") ? "circle" : null;
+			}
+		}
+		return null;
+	}
+
+	public synchronized boolean setCross(int x, int y) {
+		return this.board.set(x, y, "X");
+	}
+
+	public synchronized boolean setCircle(int x, int y) {
+		return this.board.set(x, y, "O");
+	}
+	
+	public synchronized User checkWinConditions() {
+		String winnerChar = board.hasWinner();
+		if(winnerChar==null) {
+			return null;
+		}
+		
+		if(winnerChar.equals("X")) {
+			return first;
+		}else {
+			return getAnotherUser(first);
+		}
+	}
+	
+	public synchronized void end() {
+		this.turn = null;
+	}
+	
+	
 }

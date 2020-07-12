@@ -9,7 +9,6 @@ public class Server {
 	static List<Listener> listeners = new ArrayList<>();
 
 	public static void main(String[] args) throws IOException {
-
 		server = new ServerSocket(9000);
 		while (true) {
 			User u = new User(server.accept());
@@ -33,16 +32,12 @@ public class Server {
 
 	public static void sendMessage(String username, String message) {
 		for (Listener l : listeners) {
-			if (l.user != null) {
-				if (l.user.name != null) {
-					if (l.user.name.strip().equals(username.strip())) {
-						try {
-							l.output.write(message);
-							l.output.flush();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
+			if (l.user != null && l.user.name != null && l.user.name.strip().equals(username.strip())) {
+				try {
+					l.output.write(message);
+					l.output.flush();
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
 		}

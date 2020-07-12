@@ -23,7 +23,6 @@ public class Listener extends Thread {
 	public Listener(User u) {
 		this.id = this.getId();
 		this.user = u;
-		System.out.println("Connected from "+this.user.getSocket().getInetAddress());
 		start();
 	}
 
@@ -42,10 +41,10 @@ public class Listener extends Thread {
 
 	public void disconnect() {
 		this.user.disconnect();
-		if(this.game!=null)this.game.removeUser(this.user);
+		if (this.game != null)
+			this.game.removeUser(this.user);
 		this.running.set(false);
 		Server.removeListener(this.id);
-		System.out.println("disconnected from "+this.user.getSocket().getInetAddress());
 	}
 
 	@Override
@@ -65,14 +64,14 @@ public class Listener extends Thread {
 					String gameName = command.substring(9);
 					boolean joined = false;
 					for (Listener l : Server.listeners) {
-						if(l.game == null) {
+						if (l.game == null) {
 							continue;
 						}
-						if(l.game.name == null) {
+						if (l.game.name == null) {
 							continue;
 						}
 						if (l.game.name.strip().equals(gameName.strip())) {
-							if(l.game.isJoinable()) {
+							if (l.game.isJoinable()) {
 								l.game.addUser(this.user, this);
 								joined = true;
 								this.game = l.game;
@@ -80,64 +79,80 @@ public class Listener extends Thread {
 							}
 						}
 					}
-					
-					output.write(joined?"ok\n":"error\n");
+
+					output.write(joined ? "ok\n" : "error\n");
 					output.flush();
 				} else if (command.contains("creategame:")) {
 					String gameName = command.substring(11);
 					boolean gameExists = false;
-					for(Listener l : Server.listeners) {
-						if(l.game == null) {
+					for (Listener l : Server.listeners) {
+						if (l.game == null) {
 							continue;
 						}
-						if(l.game.name.strip().equals(gameName.strip())) {
+						if (l.game.name.strip().equals(gameName.strip())) {
 							gameExists = true;
 						}
 					}
-					if(!gameExists) {
+					if (!gameExists) {
 						this.game = new Game(this.user, this, gameName);
 					}
-					output.write(!gameExists?"ok\n":"error\n");
+					output.write(!gameExists ? "ok\n" : "error\n");
 					output.flush();
 				} else if (command.contains("leavegame")) {
-					output.write("ok\n");
+					output.write("leaveok\n");
 					output.flush();
 					this.game.messageOpponentAfterQuit(this.user, "updateplayers\n");
 					this.game = null;
 				}
-				// like setship:1,1;3,3
-				else if (command.contains("setship:")) {
-					String coord = command.substring(8);
-					String startcoord = coord.split(";")[0];
-					String endcoord = coord.split(";")[1];
-					int x1 = Integer.parseInt(startcoord.split(",")[0]);
-					int y1 = Integer.parseInt(startcoord.split(",")[1]);
-					int x2 = Integer.parseInt(endcoord.split(",")[0]);
-					int y2 = Integer.parseInt(endcoord.split(",")[1]);
-					output.write("setship:{" + x1 + ";" + y1 + "};{" + x2 + ";" + y2 + "}\n");
-					output.flush();
-					// TODO set a ship on these coordinates
-				}
-				// like shoot:1,1
-				else if (command.contains("shoot:")) {
-					String coord = command.substring(6);
-					int x = Integer.parseInt(coord.split(",")[0]);
-					int y = Integer.parseInt(coord.split(",")[1]);
-					output.write("shotat: {" + x + "," + y + "}\n");
-					output.flush();
-					// TODO answer with sector status: NO, HIT, DEAD
+				// like setcross:1,1
+				else if (command.contains("set:")) {
+
+					String coord = command.substring(4);
+					String result = null;
+
+					int x = 0;
+					int y = 0;
+					try {
+						x = Integer.parseInt(coord.split(",")[0]);
+						y = Integer.parseInt(coord.split(",")[1]);
+						result = game.set(x, y, this.user);
+					} catch (NumberFormatException e) {
+						e.printStackTrace();
+					}
+
+					User hasWinner = game.checkWinConditions();
+
+					if (result !=null && hasWinner != null) {
+						if(hasWinner==this.user) {
+							game.messageOpponent(this.user, "loser:"+x+","+y+","+result+"\n");
+							output.write("winner:"+x+","+y+","+result+"\n");
+							output.flush();
+						}else {
+							game.messageOpponent(this.user, "winner:"+x+","+y+","+result+"\n");
+							output.write("loser:"+x+","+y+","+result+"\n");
+							output.flush();
+						}
+						game.end();
+					}
+
+					else if (result != null) {
+						game.messageOpponent(this.user, result + ":" + x + "," + y + "\n");
+						output.write(result != null ? result + ":" + x + "," + y + "\n" : "error\n");
+						output.flush();
+					}
+
 				} else if (command.contains("disconnect")) {
-					if(this.game==null) {
+					if (this.game == null) {
 						continue;
 					}
-					if(this.game!=null) {
+					if (this.game != null) {
 						this.game.messageOpponentAfterQuit(this.user, "updateplayers\n");
 					}
 					socket.close();
 				} else if (command.contains("getgames")) {
 					String str = "";
 					for (Listener l : Server.listeners) {
-						if(l.game == null) {
+						if (l.game == null) {
 							continue;
 						}
 						if (l.game != null && l.game.isJoinable()) {
@@ -159,20 +174,18 @@ public class Listener extends Thread {
 					}
 					if (!exists) {
 						setUserName(username);
-						System.out.println(username+" logged in from "+this.user.getSocket().getInetAddress());
 						output.write("ok\n");
 					} else {
 						output.write("exists\n");
 					}
 					output.flush();
 
-					
-				}else if(command.contains("getplayers")) {//reponse as user1;user2
+				} else if (command.contains("getplayers")) {// reponse as user1;user2
 					String response = "players:";
-					response+=this.game.user1==null?" ":this.game.user1.name;
-					response+=";";
-					response+=this.game.user2==null?" ":this.game.user2.name;
-					output.write(response+"\n");
+					response += this.game.user1 == null ? " " : this.game.user1.name;
+					response += ";";
+					response += this.game.user2 == null ? " " : this.game.user2.name;
+					output.write(response + "\n");
 					output.flush();
 				}
 
